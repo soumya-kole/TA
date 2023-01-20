@@ -2,7 +2,7 @@ from time import sleep
 
 from common_utils.read_data import *
 
-stock = Stock("^DJI")
+stock = Stock("INFY.NS")
 first_candle = stock.get_first_candle(interval='15m')
 print(first_candle)
 
