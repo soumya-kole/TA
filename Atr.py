@@ -1,14 +1,11 @@
 ##RSI NSEBANK
-import yfinance as yf
-import talib as ta
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import datetime
-import math
-from math import floor
-from termcolor import colored as cl
 import copy
+import os
+from datetime import datetime
+
+import pandas as pd
+import talib as ta
+import yfinance as yf
 
 symbol = "^NSEBANK"
 # df=yf.Ticker(symbol).history(period="1mo",interval="15m")
@@ -25,8 +22,28 @@ df['ATR'] = df['range'].rolling(14).mean()
 df["Stoploss"] = 50
 df["Target"] = 100
 
+_intermediate_directory = os.path.join(os.environ['HOME'], 'intermediate')
+_final_directory = os.path.join(os.environ['HOME'], 'final')
 
-# print(df)
+
+def _create_if_not_present(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+
+def _handle_date_with_timezone(df: pd.DataFrame, col_name:list) -> pd.DataFrame:
+    for c in col_name:
+        df[c] = df[c].apply(lambda a: datetime.strftime(a, "%Y-%m-%d %H:%M:%S"))
+    return df
+
+
+def _get_paths():
+    _create_if_not_present(_intermediate_directory)
+    _create_if_not_present(_final_directory)
+    ret = {'_intermediate_csv': os.path.join(_intermediate_directory, 'data.csv'),
+            '_final_excel': os.path.join(_final_directory, f"{datetime.today().strftime('%Y_%m_%d_%H_%M_%S')}data.xlsx")}
+    print(ret)
+    return ret
 
 def check_sl_or_tgt(pos):
     global position
@@ -49,7 +66,7 @@ def check_sl_or_tgt(pos):
                     position = None
                     p = i
                     traded.append(copy.deepcopy(trade))
-                    break;
+                    break
 
             else:
                 sl = trade['Entry Price'] - df['Stoploss'][pos]
@@ -65,14 +82,14 @@ def check_sl_or_tgt(pos):
                     position = None
                     p = i
                     traded.append(copy.deepcopy(trade))
-                    break;
+                    break
     return p
 
 
 df = df.dropna()
 # display first few rows
 # print(df.head())
-df.to_csv('/Users/samirpal/Desktop/backtesting/data.csv')
+df.to_csv(_get_paths().get('_intermediate_csv'))
 
 trade = {'Symbol': None, 'Buy/Sell': None, 'Entry Price': None, 'Entry Date': None, 'Exit Price': None,
          'Exit Date': None, 'RSI': None}
@@ -128,6 +145,11 @@ print("End result")
 for x in traded:
     print(x['Entry Price'], x['Entry Date'], x['Exit Price'], x['Exit Date'], x['Buy/Sell'])
 
+col_list = ['Entry Price', 'Entry Date', 'Exit Price', 'Exit Date', 'Buy/Sell']
+
+df = pd.DataFrame(traded)
+df = _handle_date_with_timezone(df, ['Entry Date', 'Exit Date'])
+df.to_excel(_get_paths().get('_final_excel'), columns=col_list, index=False)
 # import csv
 # csv_columns = ['Symbol','Buy/Sell','Entry Price','Entry Date','Exit Price','Exit Date','RSI']
 # csv_file = "Names.csv"
